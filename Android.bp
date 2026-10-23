@@ -18,7 +18,6 @@ cc_defaults {
         "-Werror",
         "-Wshadow",
         "-Wno-c99-designator",
-        "-D_FORTIFY_SOURCE=2",
     ],
     cpp_std: "c++17",
     cppflags: [
@@ -27,7 +26,6 @@ cc_defaults {
         "-DHAVE_LOCALE_T",
         "-Wshadow",
         "-Wno-c99-designator",
-        "-D_FORTIFY_SOURCE=2",
         "-Wextra-semi",
         "-Wno-implicit-fallthrough",
         /* Real path will be set via environment variables at runtime */
