@@ -1443,7 +1443,7 @@ CameraDevice::getResultMetadata(const Camera3RequestDescriptor &descriptor) cons
 
 	/*
 	 * \todo Keep this in sync with the actual number of entries.
-	 * Currently: 40 entries, 156 bytes
+	 * Currently: 41 entries, 157 bytes
 	 *
 	 * Reserve more space for the JPEG metadata set by the post-processor.
 	 * Currently:
@@ -1575,6 +1575,9 @@ CameraDevice::getResultMetadata(const Camera3RequestDescriptor &descriptor) cons
 
 	value = ANDROID_NOISE_REDUCTION_MODE_OFF;
 	resultMetadata->addEntry(ANDROID_NOISE_REDUCTION_MODE, value);
+
+	value = ANDROID_DISTORTION_CORRECTION_MODE_OFF;
+	resultMetadata->addEntry(ANDROID_DISTORTION_CORRECTION_MODE, value);
 
 	/* 33.3 msec */
 	const int64_t rolling_shutter_skew = 33300000;

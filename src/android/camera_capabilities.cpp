@@ -902,6 +902,7 @@ int CameraCapabilities::initializeStaticMetadata()
 		ANDROID_CONTROL_AWB_LOCK_AVAILABLE,
 		ANDROID_CONTROL_MAX_REGIONS,
 		ANDROID_CONTROL_SCENE_MODE_OVERRIDES,
+		ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES,
 		ANDROID_FLASH_INFO_AVAILABLE,
 		ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
 		ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
@@ -955,6 +956,7 @@ int CameraCapabilities::initializeStaticMetadata()
 		ANDROID_CONTROL_MODE,
 		ANDROID_CONTROL_SCENE_MODE,
 		ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+		ANDROID_DISTORTION_CORRECTION_MODE,
 		ANDROID_FLASH_MODE,
 		ANDROID_JPEG_ORIENTATION,
 		ANDROID_JPEG_QUALITY,
@@ -987,6 +989,7 @@ int CameraCapabilities::initializeStaticMetadata()
 		ANDROID_CONTROL_MODE,
 		ANDROID_CONTROL_SCENE_MODE,
 		ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+		ANDROID_DISTORTION_CORRECTION_MODE,
 		ANDROID_FLASH_MODE,
 		ANDROID_FLASH_STATE,
 		ANDROID_JPEG_GPS_COORDINATES,
@@ -1399,6 +1402,15 @@ int CameraCapabilities::initializeStaticMetadata()
 					  data);
 	}
 
+	/* Distortion correction is not implemented. */
+	{
+		std::vector<uint8_t> data = {
+			ANDROID_DISTORTION_CORRECTION_MODE_OFF,
+		};
+		staticMetadata_->addEntry(ANDROID_DISTORTION_CORRECTION_AVAILABLE_MODES,
+					  data);
+	}
+
 	/* Scaler static metadata. */
 
 	/*
@@ -1719,6 +1731,10 @@ std::unique_ptr<CameraMetadata> CameraCapabilities::requestTemplatePreview() con
 	uint8_t aberrationMode = ANDROID_COLOR_CORRECTION_ABERRATION_MODE_OFF;
 	requestTemplate->addEntry(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
 				  aberrationMode);
+
+	uint8_t distortionCorrectionMode = ANDROID_DISTORTION_CORRECTION_MODE_OFF;
+	requestTemplate->addEntry(ANDROID_DISTORTION_CORRECTION_MODE,
+				  distortionCorrectionMode);
 
 	uint8_t controlMode = ANDROID_CONTROL_MODE_AUTO;
 	requestTemplate->addEntry(ANDROID_CONTROL_MODE, controlMode);
