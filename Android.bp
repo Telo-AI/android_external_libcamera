@@ -62,6 +62,20 @@ cc_library_shared {
     ],
     shared_libs: [
         "libdl",
-        "libyaml"
+    ],
+    static_libs: [
+        "libyaml",
+    ],
+}
+
+// libyaml is only visible to this package, so cam takes it from here
+cc_library_static {
+    name: "libcamera_yaml",
+    vendor: true,
+    static_libs: [
+        "libyaml",
+    ],
+    export_static_lib_headers: [
+        "libyaml",
     ],
 }

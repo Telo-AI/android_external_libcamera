@@ -29,6 +29,8 @@ cc_binary {
         "libevent",
         "libdrm",
         "libcamera",
-        "libyaml"
+    ],
+    static_libs: [
+        "libcamera_yaml",
     ],
 }
