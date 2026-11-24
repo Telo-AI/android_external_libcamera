@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <libyuv/convert.h>
+#include <libyuv/convert_from_argb.h>
 #include <libyuv/scale.h>
 
 #include <libcamera/base/log.h>
@@ -33,6 +34,7 @@ namespace {
  */
 const std::map<PixelFormat, const std::vector<PixelFormat>> supportedConversions = {
 	{ formats::YUYV, { formats::NV12 } },
+	{ formats::XRGB8888, { formats::NV12 } },
 };
 
 } /* namespace */
@@ -109,6 +111,16 @@ void PostProcessorYuv::process(Camera3RequestDescriptor::StreamBuffer *streamBuf
 		break;
 	case formats::YUYV:
 		ret = libyuv::YUY2ToNV12(sourceMapped.planes()[0].data(),
+					 sourceStride_[0],
+					 destination->plane(0).data(),
+					 destinationStride_[0],
+					 destination->plane(1).data(),
+					 destinationStride_[1],
+					 destinationSize_.width,
+					 destinationSize_.height);
+		break;
+	case formats::XRGB8888:
+		ret = libyuv::ARGBToNV12(sourceMapped.planes()[0].data(),
 					 sourceStride_[0],
 					 destination->plane(0).data(),
 					 destinationStride_[0],

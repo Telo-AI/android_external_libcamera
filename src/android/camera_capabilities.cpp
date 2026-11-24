@@ -135,6 +135,7 @@ const std::map<int, const Camera3Format> camera3FormatsMap = {
  */
 const std::map<PixelFormat, const std::vector<PixelFormat>> yuvConversions = {
 	{ formats::YUYV, { formats::NV12 } },
+	{ formats::XRGB8888, { formats::NV12 } },
 };
 
 const std::map<camera_metadata_enum_android_info_supported_hardware_level, std::string>
