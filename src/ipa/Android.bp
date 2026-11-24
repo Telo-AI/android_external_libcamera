@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC0-1.0
+
+cc_library_shared {
+    name: "ipa_softisp",
+    vendor: true,
+    relative_install_path: "libcamera",
+    defaults: [
+        "libcamera_default_flags",
+    ],
+    srcs: [
+        "libipa/*.cpp",
+        "softisp/*.cpp",
+        "softisp/algorithms/*.cpp",
+    ],
+    // Meson puts each target's own folder and its generated headers'
+    // folders on the include path
+    local_include_dirs: [
+        "softisp",
+        ".",
+    ],
+    include_dirs: [
+        "external/libcamera/include/libcamera",
+        "external/libcamera/include/libcamera/ipa",
+    ],
+    header_libs: [
+        "libcamera_includes",
+    ],
+    shared_libs: [
+        "libcamera",
+    ],
+}
+
+prebuilt_etc {
+    name: "libcamera_ipa_softisp_uncalibrated.yaml",
+    vendor: true,
+    src: "softisp/data/uncalibrated.yaml",
+    filename_from_src: true,
+    sub_dir: "libcamera/ipa/softisp",
+}

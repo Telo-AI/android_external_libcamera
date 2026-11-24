@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: CC0-1.0
+
+genrule {
+    name: "libcamera_softisp_mojom_module",
+    srcs: [
+        "core.mojom",
+        "softisp.mojom",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_parser",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_parser)" +
+        " --output-root $(genDir)" +
+        " --input-root external/libcamera" +
+        " --mojoms $(location core.mojom) $(location softisp.mojom)",
+    out: ["include/libcamera/ipa/softisp.mojom-module"],
+}

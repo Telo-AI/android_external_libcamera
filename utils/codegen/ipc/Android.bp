@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: CC0-1.0
+
+python_binary_host {
+    name: "libcamera_codegen_python",
+    main: "soong_launcher.py",
+    srcs: ["soong_launcher.py"],
+    libs: [
+        "py-jinja",
+        "py-ply",
+    ],
+}
+
+filegroup {
+    name: "libcamera_codegen_generate",
+    srcs: ["generate.py"],
+}
+
+filegroup {
+    name: "libcamera_codegen_parser",
+    srcs: ["parser.py"],
+}
+
+filegroup {
+    name: "libcamera_codegen_sources",
+    srcs: [
+        "generators/**/*.py",
+        "generators/**/*.tmpl",
+        "mojo/**/*.py",
+        "tools/**/*.py",
+    ],
+}
+
+genrule {
+    name: "libcamera_ipc_templates",
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " -o $(genDir) precompile",
+    out: ["libcamera_templates.zip"],
+}

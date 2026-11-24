@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC0-1.0
+
+genrule {
+    name: "libcamera_softisp_ipa_proxy_worker",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_softisp_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_proxy_worker" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_softisp_mojom_module)",
+    out: ["softisp_ipa_proxy_worker.cpp"],
+}
+
+cc_binary {
+    name: "softisp_ipa_proxy",
+    vendor: true,
+    relative_install_path: "libcamera",
+    defaults: [
+        "libcamera_default_flags",
+    ],
+    srcs: [
+        ":libcamera_softisp_ipa_proxy_worker",
+    ],
+    header_libs: [
+        "libcamera_includes",
+    ],
+    shared_libs: [
+        "libcamera",
+    ],
+}
