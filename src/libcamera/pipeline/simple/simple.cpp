@@ -209,6 +209,7 @@ public:
 	void clear();
 
 	SimpleFrameInfo *find(uint32_t frame);
+	std::vector<Request *> requests() const;
 
 private:
 	std::map<uint32_t, SimpleFrameInfo> frameInfo_;
@@ -237,6 +238,14 @@ SimpleFrameInfo *SimpleFrames::find(uint32_t frame)
 	if (info == frameInfo_.end())
 		return nullptr;
 	return &info->second;
+}
+
+std::vector<Request *> SimpleFrames::requests() const
+{
+	std::vector<Request *> requests;
+	for (const auto &[frame, info] : frameInfo_)
+		requests.push_back(info.request);
+	return requests;
 }
 
 struct SimplePipelineInfo {
@@ -980,6 +989,12 @@ void SimpleCameraData::imageBufferReady(FrameBuffer *buffer)
 
 void SimpleCameraData::clearIncompleteRequests()
 {
+	/* The stopped IPA won't deliver the metadata in-flight frames wait for. */
+	for (Request *request : frameInfo_.requests()) {
+		frameInfo_.find(request->sequence())->metadataRequired = false;
+		tryCompleteRequest(request);
+	}
+
 	while (!conversionQueue_.empty()) {
 		pipe()->cancelRequest(conversionQueue_.front().request);
 		conversionQueue_.pop();
@@ -1774,8 +1789,8 @@ void SimplePipelineHandler::stopDevice(Camera *camera)
 
 	video->bufferReady.disconnect(data, &SimpleCameraData::imageBufferReady);
 
-	data->frameInfo_.clear();
 	data->clearIncompleteRequests();
+	data->frameInfo_.clear();
 	data->conversionBuffers_.clear();
 
 	releasePipeline(data);
