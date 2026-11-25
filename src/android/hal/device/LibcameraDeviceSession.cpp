@@ -500,24 +500,6 @@ void LibcameraDeviceSession::ResultBatcher::sendBatchShutterCbsLocked(
     batch->mShutterMsgs.clear();
 }
 
-void LibcameraDeviceSession::ResultBatcher::freeReleaseFences(std::vector<CaptureResult>& results) {
-    for (auto& result : results) {
-        native_handle_t* handle = makeFromAidl(result.inputBuffer.releaseFence);
-        if (handle != nullptr) {
-            native_handle_close(handle);
-            native_handle_delete(handle);
-        }
-        for (auto& buf : result.outputBuffers) {
-            native_handle_t* resultFence = makeFromAidl(buf.releaseFence);
-            if (resultFence != nullptr) {
-                native_handle_close(handle);
-                native_handle_delete(handle);
-            }
-        }
-    }
-    return;
-}
-
 void LibcameraDeviceSession::ResultBatcher::moveStreamBuffer(StreamBuffer&& src, StreamBuffer& dst) {
     // Only dealing with releaseFence here. Assume buffer/acquireFence are null
     dst.releaseFence = std::move(src.releaseFence);
@@ -597,7 +579,6 @@ void LibcameraDeviceSession::ResultBatcher::sendBatchBuffersLocked(
         }
     }
     invokeProcessCaptureResultCallback(results, /* tryWriteFmq */false);
-    freeReleaseFences(results);
     for (int streamId : streams) {
         auto it = batch->mBatchBufs.find(streamId);
         if (it == batch->mBatchBufs.end()) {
@@ -760,7 +741,6 @@ void LibcameraDeviceSession::ResultBatcher::processOneCaptureResult(CaptureResul
     results.resize(1);
     results[0] = std::move(result);
     invokeProcessCaptureResultCallback(results, /* tryWriteFmq */true);
-    freeReleaseFences(results);
     return;
 }
 
@@ -1447,6 +1427,7 @@ status_t LibcameraDeviceSession::constructCaptureResult(CaptureResult& result,
             native_handle_t* handle = native_handle_create(/*numFds*/1, /*numInts*/0);
             handle->data[0] = hal_result->input_buffer->release_fence;
             result.inputBuffer.releaseFence = android::dupToAidl(handle);
+            native_handle_close(handle);
             native_handle_delete(handle);
         } else {
             result.inputBuffer.releaseFence = NativeHandle();
@@ -1474,6 +1455,7 @@ status_t LibcameraDeviceSession::constructCaptureResult(CaptureResult& result,
             native_handle_t* handle = native_handle_create(/*numFds*/1, /*numInts*/0);
             handle->data[0] = hal_result->output_buffers[i].release_fence;
             result.outputBuffers[i].releaseFence = android::dupToAidl(handle);
+            native_handle_close(handle);
             native_handle_delete(handle);
         } else {
             result.outputBuffers[i].releaseFence = NativeHandle();

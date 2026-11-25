@@ -285,7 +285,6 @@ protected:
        // End of sendXXXX methods
 
         // helper methods
-        void freeReleaseFences(std::vector<CaptureResult>&);
         void notifySingleMsg(NotifyMsg& msg);
         void processOneCaptureResult(CaptureResult& result);
         void invokeProcessCaptureResultCallback(std::vector<CaptureResult> &results, bool tryWriteFmq);
