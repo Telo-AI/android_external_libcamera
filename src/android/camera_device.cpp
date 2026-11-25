@@ -588,6 +588,13 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 		return -EINVAL;
 	}
 
+	/* Android rotates images by the sensor orientation it reports. */
+	const auto &rotation = camera_->properties().get(properties::Rotation);
+	const std::optional<Orientation> native =
+		rotation ? orientationFromRotation(*rotation) : std::nullopt;
+	if (native)
+		config->orientation = *native;
+
 	/*
 	 * Clear and remove any existing configuration from previous calls, and
 	 * ensure the required entries are available without further
