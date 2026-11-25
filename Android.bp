@@ -51,14 +51,23 @@ cc_library_shared {
         "src/libcamera/converter/*.cpp",
         "src/libcamera/sensor/*.cpp",
         "src/libcamera/software_isp/*.cpp",
-        "src/libcamera/proxy/*.cpp",
         "src/libcamera/pipeline/simple/*.cpp",
+        ":libcamera_control_ids_cpp",
+        ":libcamera_property_ids_cpp",
+        ":libcamera_version_cpp",
+        ":libcamera_softisp_ipa_proxy_cpp",
     ],
     exclude_srcs: [
         "src/libcamera/device_enumerator_udev.cpp",
+        "src/libcamera/egl.cpp",
+        "src/libcamera/software_isp/debayer_egl.cpp",
     ],
     header_libs: [
         "libcamera_includes",
+        "libcamera_generated_headers",
+    ],
+    export_header_lib_headers: [
+        "libcamera_generated_headers",
     ],
     shared_libs: [
         "libdl",
@@ -77,5 +86,202 @@ cc_library_static {
     ],
     export_static_lib_headers: [
         "libyaml",
+    ],
+}
+
+// The sources meson generates, generated here the same way
+
+genrule_defaults {
+    name: "libcamera_codegen_defaults",
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        "utils/codegen/controls.py",
+        "utils/codegen/gen-controls.py",
+        "utils/codegen/gen-formats.py",
+        "utils/codegen/gen-header.sh",
+        "utils/codegen/gen-tp-header.py",
+    ],
+}
+
+genrule {
+    name: "libcamera_control_ids_h",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "include/libcamera/control_ids.h.in",
+        "src/libcamera/control_ranges.yaml",
+        "src/libcamera/control_ids_core.yaml",
+        "src/libcamera/control_ids_debug.yaml",
+        "src/libcamera/control_ids_draft.yaml",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-controls.py)" +
+        " -o $(out) --mode controls" +
+        " -t $(location include/libcamera/control_ids.h.in)" +
+        " -r $(location src/libcamera/control_ranges.yaml)" +
+        " $(location src/libcamera/control_ids_core.yaml)" +
+        " $(location src/libcamera/control_ids_debug.yaml)" +
+        " $(location src/libcamera/control_ids_draft.yaml)",
+    out: ["include/libcamera/control_ids.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera",
+    ],
+}
+
+genrule {
+    name: "libcamera_control_ids_cpp",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "src/libcamera/control_ids.cpp.in",
+        "src/libcamera/control_ranges.yaml",
+        "src/libcamera/control_ids_core.yaml",
+        "src/libcamera/control_ids_debug.yaml",
+        "src/libcamera/control_ids_draft.yaml",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-controls.py)" +
+        " -o $(out) --mode controls" +
+        " -t $(location src/libcamera/control_ids.cpp.in)" +
+        " -r $(location src/libcamera/control_ranges.yaml)" +
+        " $(location src/libcamera/control_ids_core.yaml)" +
+        " $(location src/libcamera/control_ids_debug.yaml)" +
+        " $(location src/libcamera/control_ids_draft.yaml)",
+    out: ["control_ids.cpp"],
+}
+
+genrule {
+    name: "libcamera_property_ids_h",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "include/libcamera/control_ids.h.in",
+        "src/libcamera/control_ranges.yaml",
+        "src/libcamera/property_ids_core.yaml",
+        "src/libcamera/property_ids_draft.yaml",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-controls.py)" +
+        " -o $(out) --mode properties" +
+        " -t $(location include/libcamera/control_ids.h.in)" +
+        " -r $(location src/libcamera/control_ranges.yaml)" +
+        " $(location src/libcamera/property_ids_core.yaml)" +
+        " $(location src/libcamera/property_ids_draft.yaml)",
+    out: ["include/libcamera/property_ids.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera",
+    ],
+}
+
+genrule {
+    name: "libcamera_property_ids_cpp",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "src/libcamera/control_ids.cpp.in",
+        "src/libcamera/control_ranges.yaml",
+        "src/libcamera/property_ids_core.yaml",
+        "src/libcamera/property_ids_draft.yaml",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-controls.py)" +
+        " -o $(out) --mode properties" +
+        " -t $(location src/libcamera/control_ids.cpp.in)" +
+        " -r $(location src/libcamera/control_ranges.yaml)" +
+        " $(location src/libcamera/property_ids_core.yaml)" +
+        " $(location src/libcamera/property_ids_draft.yaml)",
+    out: ["property_ids.cpp"],
+}
+
+genrule {
+    name: "libcamera_formats_h",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "src/libcamera/formats.yaml",
+        "include/libcamera/formats.h.in",
+        "include/linux/drm_fourcc.h",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-formats.py)" +
+        " -o $(out) $(location src/libcamera/formats.yaml)" +
+        " $(location include/libcamera/formats.h.in)" +
+        " $(location include/linux/drm_fourcc.h)",
+    out: ["include/libcamera/formats.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera",
+    ],
+}
+
+genrule {
+    name: "libcamera_version_h",
+    srcs: ["include/libcamera/version.h.in"],
+    cmd: "sed -e 's/@LIBCAMERA_VERSION_MAJOR@/0/' -e 's/@LIBCAMERA_VERSION_MINOR@/8/'" +
+        " -e 's/@LIBCAMERA_VERSION_PATCH@/0/' $(in) > $(out)",
+    out: ["include/libcamera/version.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera",
+    ],
+}
+
+genrule {
+    name: "libcamera_version_cpp",
+    srcs: ["src/libcamera/version.cpp.in"],
+    cmd: "sed -e 's/@VCS_TAG@/0.8.0/' $(in) > $(out)",
+    out: ["version.cpp"],
+}
+
+genrule {
+    name: "libcamera_libcamera_h",
+    defaults: ["libcamera_codegen_defaults"],
+    cmd: "bash $(location utils/codegen/gen-header.sh) $(out)" +
+        " camera.h camera_manager.h color_space.h controls.h fence.h framebuffer.h" +
+        " framebuffer_allocator.h geometry.h logging.h orientation.h pixel_format.h" +
+        " request.h stream.h transform.h control_ids.h property_ids.h formats.h version.h",
+    out: ["include/libcamera/libcamera.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera",
+    ],
+}
+
+genrule {
+    name: "libcamera_tracepoints_h",
+    defaults: ["libcamera_codegen_defaults"],
+    srcs: [
+        "include/libcamera/internal/tracepoints.h.in",
+        "include/libcamera/internal/tracepoints/buffer_enums.tp",
+        "include/libcamera/internal/tracepoints/request_enums.tp",
+        "include/libcamera/internal/tracepoints/pipeline.tp",
+        "include/libcamera/internal/tracepoints/request.tp",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location utils/codegen/gen-tp-header.py)" +
+        " $$(realpath $(genDir))/include $(out) $(in)",
+    out: ["include/libcamera/internal/tracepoints.h"],
+    export_include_dirs: ["include"],
+}
+
+cc_library_headers {
+    name: "libcamera_generated_headers",
+    vendor: true,
+    generated_headers: [
+        "libcamera_control_ids_h",
+        "libcamera_property_ids_h",
+        "libcamera_formats_h",
+        "libcamera_version_h",
+        "libcamera_libcamera_h",
+        "libcamera_tracepoints_h",
+        "libcamera_core_ipa_interface_h",
+        "libcamera_core_ipa_serializer_h",
+        "libcamera_softisp_ipa_interface_h",
+        "libcamera_softisp_ipa_serializer_h",
+        "libcamera_softisp_ipa_proxy_h",
+    ],
+    export_generated_headers: [
+        "libcamera_control_ids_h",
+        "libcamera_property_ids_h",
+        "libcamera_formats_h",
+        "libcamera_version_h",
+        "libcamera_libcamera_h",
+        "libcamera_tracepoints_h",
+        "libcamera_core_ipa_interface_h",
+        "libcamera_core_ipa_serializer_h",
+        "libcamera_softisp_ipa_interface_h",
+        "libcamera_softisp_ipa_serializer_h",
+        "libcamera_softisp_ipa_proxy_h",
     ],
 }

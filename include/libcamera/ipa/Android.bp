@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: CC0-1.0
 
 genrule {
+    name: "libcamera_core_mojom_module",
+    srcs: ["core.mojom"],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_parser",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_parser)" +
+        " --output-root $(genDir)" +
+        " --input-root external/libcamera" +
+        " --mojoms $(location core.mojom)",
+    out: ["include/libcamera/ipa/core.mojom-module"],
+}
+
+genrule {
     name: "libcamera_softisp_mojom_module",
     srcs: [
         "core.mojom",
@@ -16,4 +31,144 @@ genrule {
         " --input-root external/libcamera" +
         " --mojoms $(location core.mojom) $(location softisp.mojom)",
     out: ["include/libcamera/ipa/softisp.mojom-module"],
+}
+
+genrule {
+    name: "libcamera_core_ipa_interface_h",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_core_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_core_header" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_core_mojom_module)",
+    out: ["include/libcamera/ipa/core_ipa_interface.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera/ipa",
+    ],
+}
+
+genrule {
+    name: "libcamera_core_ipa_serializer_h",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_core_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_core_serializer" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_core_mojom_module)",
+    out: ["include/libcamera/ipa/core_ipa_serializer.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera/ipa",
+    ],
+}
+
+genrule {
+    name: "libcamera_softisp_ipa_interface_h",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_softisp_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_header" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_softisp_mojom_module)",
+    out: ["include/libcamera/ipa/softisp_ipa_interface.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera/ipa",
+    ],
+}
+
+genrule {
+    name: "libcamera_softisp_ipa_serializer_h",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_softisp_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_serializer" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_softisp_mojom_module)",
+    out: ["include/libcamera/ipa/softisp_ipa_serializer.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera/ipa",
+    ],
+}
+
+genrule {
+    name: "libcamera_softisp_ipa_proxy_h",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_softisp_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_proxy_h" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_softisp_mojom_module)",
+    out: ["include/libcamera/ipa/softisp_ipa_proxy.h"],
+    export_include_dirs: [
+        "include",
+        "include/libcamera/ipa",
+    ],
+}
+
+genrule {
+    name: "libcamera_softisp_ipa_proxy_cpp",
+    srcs: [
+        ":libcamera_ipc_templates",
+        ":libcamera_softisp_mojom_module",
+    ],
+    tools: ["libcamera_codegen_python"],
+    tool_files: [
+        ":libcamera_codegen_generate",
+        ":libcamera_codegen_sources",
+    ],
+    cmd: "$(location libcamera_codegen_python) $(location :libcamera_codegen_generate)" +
+        " generate -g libcamera" +
+        " --bytecode_path $$(dirname $(location :libcamera_ipc_templates))" +
+        " --libcamera_generate_proxy_cpp" +
+        " --libcamera_output_path=$(out)" +
+        " $(location :libcamera_softisp_mojom_module)",
+    out: ["softisp_ipa_proxy.cpp"],
 }
