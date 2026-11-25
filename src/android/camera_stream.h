@@ -27,6 +27,10 @@
 class CameraDevice;
 class PlatformFrameBufferAllocator;
 
+namespace libcamera {
+class DmaBufAllocator;
+} /* namespace libcamera */
+
 class CameraStream
 {
 public:
@@ -177,6 +181,7 @@ private:
 	const unsigned int index_;
 
 	std::unique_ptr<PlatformFrameBufferAllocator> allocator_;
+	std::unique_ptr<libcamera::DmaBufAllocator> dmaHeap_;
 	std::vector<std::unique_ptr<libcamera::FrameBuffer>> allocatedBuffers_;
 	std::vector<libcamera::FrameBuffer *> buffers_ LIBCAMERA_TSA_GUARDED_BY(mutex_);
 	/*

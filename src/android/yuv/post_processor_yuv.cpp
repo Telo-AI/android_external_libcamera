@@ -20,6 +20,7 @@
 #include <libcamera/geometry.h>
 #include <libcamera/pixel_format.h>
 
+#include "libcamera/internal/dma_buf_allocator.h"
 #include "libcamera/internal/formats.h"
 #include "libcamera/internal/mapped_framebuffer.h"
 
@@ -87,6 +88,9 @@ void PostProcessorYuv::process(Camera3RequestDescriptor::StreamBuffer *streamBuf
 		return;
 	}
 
+	std::vector<DmaSyncer> syncers;
+	for (const FrameBuffer::Plane &plane : source.planes())
+		syncers.emplace_back(plane.fd, DmaSyncer::SyncType::Read);
 	const MappedFrameBuffer sourceMapped(&source, MappedFrameBuffer::MapFlag::Read);
 	if (!sourceMapped.isValid()) {
 		LOG(YUV, Error) << "Failed to mmap camera frame buffer";

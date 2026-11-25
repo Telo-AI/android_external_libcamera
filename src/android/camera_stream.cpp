@@ -16,6 +16,9 @@
 
 #include <libcamera/formats.h>
 
+#include "libcamera/internal/dma_buf_allocator.h"
+#include "libcamera/internal/formats.h"
+
 #include "jpeg/post_processor_jpeg.h"
 #include "yuv/post_processor_yuv.h"
 
@@ -71,6 +74,7 @@ CameraStream::~CameraStream()
 	 */
 	allocatedBuffers_.clear();
 	allocator_.reset();
+	dmaHeap_.reset();
 }
 
 const StreamConfiguration &CameraStream::configuration() const
@@ -146,6 +150,15 @@ int CameraStream::configure()
 	}
 
 	allocator_ = std::make_unique<PlatformFrameBufferAllocator>(cameraDevice_);
+
+	/* Only the HAL reads converted streams: map them cached, unlike gralloc. */
+	if (type_ != Type::Direct && needConversion_) {
+		auto heap = std::make_unique<DmaBufAllocator>(
+			DmaBufAllocator::DmaBufAllocatorFlag::CmaHeap |
+			DmaBufAllocator::DmaBufAllocatorFlag::SystemHeap);
+		if (heap->isValid())
+			dmaHeap_ = std::move(heap);
+	}
 	mutex_ = std::make_unique<Mutex>();
 
 	camera3Stream_->max_buffers = configuration().bufferCount;
@@ -269,19 +282,37 @@ FrameBuffer *CameraStream::getBuffer()
 	MutexLocker locker(*mutex_);
 
 	if (buffers_.empty()) {
-		/*
-		 * Use HAL_PIXEL_FORMAT_YCBCR_420_888 unconditionally.
-		 *
-		 * YCBCR_420 is the source format for both the JPEG and the YUV
-		 * post-processors.
-		 *
-		 * \todo Store a reference to the format of the source stream
-		 * instead of hardcoding.
-		 */
-		const Size hackedSize = computeYUYVSize(configuration().size);
-		auto frameBuffer = allocator_->allocate(HAL_PIXEL_FORMAT_YCBCR_420_888,
-							hackedSize,
-							camera3Stream_->usage);
+		std::unique_ptr<FrameBuffer> frameBuffer;
+
+		if (dmaHeap_) {
+			const StreamConfiguration &cfg = configuration();
+			const PixelFormatInfo &info = PixelFormatInfo::info(cfg.pixelFormat);
+			std::vector<unsigned int> planeSizes;
+			for (unsigned int i = 0; i < info.numPlanes(); i++)
+				planeSizes.push_back(info.planeSize(cfg.size.height, i, cfg.stride));
+
+			std::vector<std::unique_ptr<FrameBuffer>> buffers;
+			if (dmaHeap_->exportBuffers(1, planeSizes, &buffers) == 1)
+				frameBuffer = std::move(buffers[0]);
+		} else {
+			/*
+			 * Use HAL_PIXEL_FORMAT_YCBCR_420_888 unconditionally.
+			 *
+			 * YCBCR_420 is the source format for both the JPEG and the YUV
+			 * post-processors.
+			 *
+			 * \todo Store a reference to the format of the source stream
+			 * instead of hardcoding.
+			 */
+			const Size hackedSize = computeYUYVSize(configuration().size);
+			frameBuffer = allocator_->allocate(HAL_PIXEL_FORMAT_YCBCR_420_888,
+							   hackedSize,
+							   camera3Stream_->usage);
+		}
+
+		if (!frameBuffer)
+			return nullptr;
+
 		allocatedBuffers_.push_back(std::move(frameBuffer));
 		buffers_.emplace_back(allocatedBuffers_.back().get());
 	}

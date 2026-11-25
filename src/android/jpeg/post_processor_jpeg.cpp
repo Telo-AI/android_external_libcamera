@@ -23,6 +23,8 @@
 
 #include <libcamera/formats.h>
 
+#include "libcamera/internal/dma_buf_allocator.h"
+
 using namespace libcamera;
 using namespace std::chrono_literals;
 
@@ -114,6 +116,10 @@ void PostProcessorJpeg::process(Camera3RequestDescriptor::StreamBuffer *streamBu
 	CameraBuffer *destination = streamBuffer->dstBuffer.get();
 
 	ASSERT(destination->numPlanes() == 1);
+
+	std::vector<DmaSyncer> syncers;
+	for (const FrameBuffer::Plane &plane : source.planes())
+		syncers.emplace_back(plane.fd, DmaSyncer::SyncType::Read);
 
 	const CameraMetadata &requestMetadata = streamBuffer->request->settings_;
 	CameraMetadata *resultMetadata = streamBuffer->request->resultMetadata_.get();
