@@ -7,6 +7,9 @@
 
 #include "thumbnailer.h"
 
+#include <libyuv/convert_from_argb.h>
+#include <libyuv/scale_argb.h>
+
 #include <libcamera/base/log.h>
 
 #include <libcamera/formats.h>
@@ -17,17 +20,47 @@ using namespace libcamera;
 
 LOG_DEFINE_CATEGORY(Thumbnailer)
 
+namespace {
+
+/* Crop to the thumbnail's aspect ratio, then scale and convert to NV12. */
+void thumbnailFromXRGB8888(const uint8_t *source, unsigned int stride,
+			   const Size &sourceSize, const Size &targetSize,
+			   std::vector<unsigned char> *destination)
+{
+	const Size crop = sourceSize.boundedToAspectRatio(targetSize);
+	const Point topLeft = crop.centeredTo(Rectangle(sourceSize).center()).topLeft();
+	const unsigned int tw = targetSize.width;
+	const unsigned int th = targetSize.height;
+	std::vector<uint8_t> scaled(tw * th * 4);
+
+	int ret = libyuv::ARGBScale(source + topLeft.y * stride + topLeft.x * 4, stride,
+				    crop.width, crop.height, scaled.data(), tw * 4,
+				    tw, th, libyuv::FilterMode::kFilterBox);
+	if (ret)
+		return;
+
+	destination->resize(tw * th + (th / 2) * tw);
+	ret = libyuv::ARGBToNV12(scaled.data(), tw * 4, destination->data(), tw,
+				 destination->data() + tw * th, tw, tw, th);
+	if (ret)
+		destination->clear();
+}
+
+} /* namespace */
+
 Thumbnailer::Thumbnailer()
 	: valid_(false)
 {
 }
 
-void Thumbnailer::configure(const Size &sourceSize, PixelFormat pixelFormat)
+void Thumbnailer::configure(const Size &sourceSize, PixelFormat pixelFormat,
+			    unsigned int stride)
 {
 	sourceSize_ = sourceSize;
 	pixelFormat_ = pixelFormat;
+	stride_ = stride;
 
-	if (pixelFormat_ != formats::NV12) {
+	if (pixelFormat_ != formats::NV12 && pixelFormat_ != formats::XRGB8888) {
 		LOG(Thumbnailer, Error)
 			<< "Failed to configure: Pixel Format "
 			<< pixelFormat_ << " unsupported.";
@@ -51,6 +84,12 @@ void Thumbnailer::createThumbnail(const FrameBuffer &source,
 
 	if (!valid_) {
 		LOG(Thumbnailer, Error) << "Config is unconfigured or invalid.";
+		return;
+	}
+
+	if (pixelFormat_ == formats::XRGB8888) {
+		thumbnailFromXRGB8888(frame.planes()[0].data(), stride_, sourceSize_,
+				      targetSize, destination);
 		return;
 	}
 

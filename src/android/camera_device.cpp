@@ -164,6 +164,47 @@ void sortCamera3StreamConfigs(std::vector<Camera3StreamConfig> &unsortedConfigs,
 	unsortedConfigs = sortedConfigs;
 }
 
+/*
+ * Derive all streams from the largest one, for cameras that produce a single
+ * processed stream. A JPEG stream needs a source of its own size.
+ */
+bool deriveCamera3StreamConfigs(std::vector<Camera3StreamConfig> &streamConfigs)
+{
+	auto largest = std::max_element(streamConfigs.begin(), streamConfigs.end(),
+					[](const auto &a, const auto &b) {
+						return a.config.size.width * a.config.size.height <
+						       b.config.size.width * b.config.size.height;
+					});
+	Camera3StreamConfig derived = *largest;
+
+	for (auto it = streamConfigs.begin(); it != streamConfigs.end(); ++it) {
+		if (it == largest)
+			continue;
+
+		const StreamConfiguration &cfg = it->config;
+		if (cfg.pixelFormat != derived.config.pixelFormat ||
+		    cfg.size.width > derived.config.size.width ||
+		    cfg.size.height > derived.config.size.height)
+			return false;
+
+		for (const auto &stream : it->streams) {
+			if (stream.stream->format == HAL_PIXEL_FORMAT_BLOB)
+				return false;
+
+			derived.streams.push_back({ stream.stream, CameraStream::Type::Mapped });
+		}
+	}
+
+	derived.streams[0].stream->usage |= GRALLOC_USAGE_SW_READ_OFTEN;
+	for (const auto &stream : derived.streams) {
+		if (stream.type == CameraStream::Type::Mapped)
+			stream.stream->usage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
+	}
+
+	streamConfigs = { std::move(derived) };
+	return true;
+}
+
 const char *rotationToString(int rotation)
 {
 	switch (rotation) {
@@ -692,7 +733,11 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 			Camera3StreamConfig streamConfig;
 			streamConfig.config.size.width = jpegStream->width;
 			streamConfig.config.size.height = jpegStream->height;
-			streamConfig.config.pixelFormat = formats::NV12;
+			if (capabilities_.needConversion(HAL_PIXEL_FORMAT_BLOB))
+				streamConfig.config.pixelFormat =
+					capabilities_.conversionFormats(HAL_PIXEL_FORMAT_BLOB).first;
+			else
+				streamConfig.config.pixelFormat = formats::NV12;
 			streamConfigs.push_back(std::move(streamConfig));
 
 			LOG(HAL, Info) << "Adding " << streamConfig.config.toString()
@@ -706,6 +751,16 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 		jpegStream->usage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
 
 		streamConfigs[index].streams.push_back({ jpegStream, type });
+	}
+
+	if (streamConfigs.size() > 1) {
+		std::unique_ptr<CameraConfiguration> test = camera_->generateConfiguration();
+		for (const Camera3StreamConfig &streamConfig : streamConfigs)
+			test->addConfiguration(streamConfig.config);
+
+		if (test->validate() == CameraConfiguration::Invalid &&
+		    deriveCamera3StreamConfigs(streamConfigs))
+			LOG(HAL, Info) << "Deriving all streams from one";
 	}
 
 	sortCamera3StreamConfigs(streamConfigs, jpegStream);

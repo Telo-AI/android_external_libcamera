@@ -12,6 +12,7 @@
 #include <libyuv/convert.h>
 #include <libyuv/convert_from_argb.h>
 #include <libyuv/scale.h>
+#include <libyuv/scale_argb.h>
 
 #include <libcamera/base/log.h>
 
@@ -119,16 +120,31 @@ void PostProcessorYuv::process(Camera3RequestDescriptor::StreamBuffer *streamBuf
 					 destinationSize_.width,
 					 destinationSize_.height);
 		break;
-	case formats::XRGB8888:
-		ret = libyuv::ARGBToNV12(sourceMapped.planes()[0].data(),
-					 sourceStride_[0],
-					 destination->plane(0).data(),
-					 destinationStride_[0],
-					 destination->plane(1).data(),
-					 destinationStride_[1],
-					 destinationSize_.width,
-					 destinationSize_.height);
+	case formats::XRGB8888: {
+		const uint8_t *argb = sourceMapped.planes()[0].data() + cropOffset_;
+		int argbStride = sourceStride_[0];
+
+		if (cropSize_ != destinationSize_) {
+			ret = libyuv::ARGBScale(argb, argbStride,
+						cropSize_.width, cropSize_.height,
+						scaled_.data(), destinationSize_.width * 4,
+						destinationSize_.width,
+						destinationSize_.height,
+						libyuv::FilterMode::kFilterBox);
+			argb = scaled_.data();
+			argbStride = destinationSize_.width * 4;
+		}
+
+		if (!ret)
+			ret = libyuv::ARGBToNV12(argb, argbStride,
+						 destination->plane(0).data(),
+						 destinationStride_[0],
+						 destination->plane(1).data(),
+						 destinationStride_[1],
+						 destinationSize_.width,
+						 destinationSize_.height);
 		break;
+	}
 	default:
 		LOG(YUV, Error) << "Unsupported source format " << sourceFormat_;
 		processComplete.emit(streamBuffer, PostProcessor::Status::Error);
@@ -207,5 +223,13 @@ void PostProcessorYuv::calculateLengths(const StreamConfiguration &inCfg,
 		destinationStride_[i] = destinationInfo.stride(destinationSize_.width, i, 1);
 		destinationLength_[i] = destinationInfo.planeSize(destinationSize_.height, i,
 								  destinationStride_[i]);
+	}
+
+	if (sourceFormat_ == formats::XRGB8888) {
+		cropSize_ = sourceSize_.boundedToAspectRatio(destinationSize_);
+		const Point topLeft = cropSize_.centeredTo(Rectangle(sourceSize_).center()).topLeft();
+		cropOffset_ = topLeft.y * sourceStride_[0] + topLeft.x * 4;
+		if (cropSize_ != destinationSize_)
+			scaled_.resize(destinationSize_.width * destinationSize_.height * 4);
 	}
 }

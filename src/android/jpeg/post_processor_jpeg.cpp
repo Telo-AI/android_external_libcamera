@@ -48,7 +48,7 @@ int PostProcessorJpeg::configure(const StreamConfiguration &inCfg,
 
 	streamSize_ = outCfg.size;
 
-	thumbnailer_.configure(inCfg.size, inCfg.pixelFormat);
+	thumbnailer_.configure(inCfg.size, inCfg.pixelFormat, inCfg.stride);
 
 #if defined(OS_CHROMEOS)
 	encoder_ = std::make_unique<EncoderJea>();
@@ -71,7 +71,7 @@ void PostProcessorJpeg::generateThumbnail(const FrameBuffer &source,
 
 	StreamConfiguration thCfg;
 	thCfg.size = targetSize;
-	thCfg.pixelFormat = thumbnailer_.pixelFormat();
+	thCfg.pixelFormat = formats::NV12;
 	int ret = thumbnailEncoder_.configure(thCfg);
 
 	if (!rawThumbnail.empty() && !ret) {

@@ -7,6 +7,7 @@
 
 #include "camera_stream.h"
 
+#include <algorithm>
 #include <errno.h>
 #include <poll.h>
 #include <string.h>
@@ -85,8 +86,22 @@ Stream *CameraStream::stream() const
 int CameraStream::configure()
 {
 	if (type_ == Type::Internal || type_ == Type::Mapped) {
-		const PixelFormat outFormat =
+		PixelFormat outFormat =
 			cameraDevice_->capabilities()->toPixelFormat(camera3Stream_->format);
+
+		needConversion_ =
+			cameraDevice_->capabilities()->needConversion(camera3Stream_->format);
+
+		if (needConversion_) {
+			auto conv = cameraDevice_->capabilities()->conversionFormats(camera3Stream_->format);
+			LOG(HAL, Debug) << "Configuring the post processor to convert "
+					<< conv.first << " -> " << conv.second;
+			outFormat = conv.second;
+		}
+
+		if (camera3Stream_->format == HAL_PIXEL_FORMAT_BLOB)
+			outFormat = formats::MJPEG;
+
 		StreamConfiguration input = configuration();
 		StreamConfiguration output = configuration();
 		output.pixelFormat = outFormat;
@@ -106,16 +121,6 @@ int CameraStream::configure()
 		default:
 			LOG(HAL, Error) << "Unsupported format: " << outFormat;
 			return -EINVAL;
-		}
-
-		needConversion_ =
-			cameraDevice_->capabilities()->needConversion(camera3Stream_->format);
-
-		if (needConversion_) {
-			auto conv = cameraDevice_->capabilities()->conversionFormats(camera3Stream_->format);
-			LOG(HAL, Debug) << "Configuring the post processor to convert "
-					<< conv.first << " -> " << conv.second;
-			output.pixelFormat = conv.second;
 		}
 
 		int ret = postProcessor_->configure(input, output);
@@ -195,6 +200,7 @@ int CameraStream::process(Camera3RequestDescriptor::StreamBuffer *streamBuffer)
 	}
 
 	StreamConfiguration output = configuration();
+	output.size = Size(camera3Stream_->width, camera3Stream_->height);
 	if (needConversion_) {
 		output.pixelFormat =
 			cameraDevice_->capabilities()->conversionFormats(camera3Stream_->format).second;
@@ -248,8 +254,9 @@ Size CameraStream::computeYUYVSize(const Size &nv12Size)
 	unsigned int width = nv12Size.width;
 	unsigned int height = nv12Size.height;
 
+	/* A luma row must also hold a row of the packed source stream. */
 	if (needConversion_)
-		width = width * YUYVfactor;
+		width = std::max(width * YUYVfactor, configuration().stride);
 
 	return Size{ width, height };
 }

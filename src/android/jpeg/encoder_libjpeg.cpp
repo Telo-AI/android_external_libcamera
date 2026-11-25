@@ -43,6 +43,7 @@ const std::map<PixelFormat, JPEGPixelFormatInfo> pixelInfo{
 
 	{ formats::RGB888, { JCS_EXT_BGR, PixelFormatInfo::info(formats::RGB888), false } },
 	{ formats::BGR888, { JCS_EXT_RGB, PixelFormatInfo::info(formats::BGR888), false } },
+	{ formats::XRGB8888, { JCS_EXT_BGRX, PixelFormatInfo::info(formats::XRGB8888), false } },
 
 	{ formats::NV12, { JCS_YCbCr, PixelFormatInfo::info(formats::NV12), false } },
 	{ formats::NV21, { JCS_YCbCr, PixelFormatInfo::info(formats::NV21), true } },
@@ -93,7 +94,9 @@ int EncoderLibJpeg::configure(const StreamConfiguration &cfg)
 	compress_.image_height = cfg.size.height;
 	compress_.in_color_space = info.colorSpace;
 
-	compress_.input_components = info.colorSpace == JCS_GRAYSCALE ? 1 : 3;
+	compress_.input_components = info.colorSpace == JCS_GRAYSCALE ? 1 :
+				     info.colorSpace == JCS_EXT_BGRX ? 4 : 3;
+	stride_ = cfg.stride;
 
 	jpeg_set_defaults(&compress_);
 
@@ -108,8 +111,8 @@ int EncoderLibJpeg::configure(const StreamConfiguration &cfg)
 void EncoderLibJpeg::compressRGB(const std::vector<std::span<uint8_t>> &planes)
 {
 	unsigned char *src = const_cast<unsigned char *>(planes[0].data());
-	/* \todo Stride information should come from buffer configuration. */
-	unsigned int stride = pixelFormatInfo_->stride(compress_.image_width, 0);
+	unsigned int stride = stride_ ? stride_ :
+			      pixelFormatInfo_->stride(compress_.image_width, 0);
 
 	JSAMPROW row_pointer[1];
 

@@ -18,7 +18,7 @@ public:
 	Thumbnailer();
 
 	void configure(const libcamera::Size &sourceSize,
-		       libcamera::PixelFormat pixelFormat);
+		       libcamera::PixelFormat pixelFormat, unsigned int stride);
 	void createThumbnail(const libcamera::FrameBuffer &source,
 			     const libcamera::Size &targetSize,
 			     std::vector<unsigned char> *dest);
@@ -27,6 +27,7 @@ public:
 private:
 	libcamera::PixelFormat pixelFormat_;
 	libcamera::Size sourceSize_;
+	unsigned int stride_;
 
 	bool valid_;
 };
