@@ -41,6 +41,7 @@
 #include "libcamera/internal/delayed_controls.h"
 #include "libcamera/internal/device_enumerator.h"
 #include "libcamera/internal/formats.h"
+#include "libcamera/internal/framebuffer.h"
 #include "libcamera/internal/global_configuration.h"
 #include "libcamera/internal/media_device.h"
 #include "libcamera/internal/pipeline_handler.h"
@@ -920,8 +921,10 @@ void SimpleCameraData::imageBufferReady(FrameBuffer *buffer)
 			return;
 
 		const RequestOutputs &outputs = conversionQueue_.front();
-		for (auto &[stream, buf] : outputs.outputs)
+		for (auto &[stream, buf] : outputs.outputs) {
+			buf->_d()->cancel();
 			pipe->completeBuffer(outputs.request, buf);
+		}
 		SimpleFrameInfo *info = frameInfo_.find(outputs.request->sequence());
 		if (info)
 			info->metadataRequired = false;
