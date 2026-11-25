@@ -412,6 +412,12 @@ void SoftwareIsp::stop()
 
 	ipa_->stop();
 
+	/*
+	 * Synchronous calls to an isolated IPA process events, so frames can be
+	 * queued after the worker stopped. Drop them, they're cancelled below.
+	 */
+	ispWorkerThread_.removeMessages(debayer_.get());
+
 	for (auto buffer : queuedOutputBuffers_) {
 		buffer->_d()->cancel();
 		outputBufferReady.emit(buffer);
