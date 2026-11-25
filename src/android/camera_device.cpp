@@ -791,13 +791,22 @@ int CameraDevice::configureStreams(camera3_stream_configuration_t *stream_list)
 	switch (config->validate()) {
 	case CameraConfiguration::Valid:
 		break;
-	case CameraConfiguration::Adjusted:
+	case CameraConfiguration::Adjusted: {
 		LOG(HAL, Info) << "Camera configuration adjusted";
 
-		for (const StreamConfiguration &cfg : *config)
+		bool sameStreams = true;
+		for (const auto &[i, cfg] : utils::enumerate(*config)) {
 			LOG(HAL, Info) << " - " << cfg.toString();
+			sameStreams &= cfg.size == streamConfigs[i].config.size &&
+				       cfg.pixelFormat == streamConfigs[i].config.pixelFormat;
+		}
+
+		/* Let the camera pick the color space, as Android leaves it open. */
+		if (sameStreams)
+			break;
 
 		return -EINVAL;
+	}
 	case CameraConfiguration::Invalid:
 		LOG(HAL, Info) << "Camera configuration invalid";
 		return -EINVAL;
