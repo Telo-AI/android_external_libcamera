@@ -318,6 +318,9 @@ EGLDisplay eGL::probeDisplay()
 	display = eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
 					EGL_DEFAULT_DISPLAY,
 					nullptr);
+	/* Android's EGL loader offers no platform but its own */
+	if (display == EGL_NO_DISPLAY)
+		display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
 	if (display == EGL_NO_DISPLAY) {
 		LOG(eGL, Info) << "Unable to get EGL display";
