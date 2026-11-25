@@ -59,8 +59,12 @@ cc_library_shared {
     ],
     exclude_srcs: [
         "src/libcamera/device_enumerator_udev.cpp",
-        "src/libcamera/egl.cpp",
-        "src/libcamera/software_isp/debayer_egl.cpp",
+    ],
+    cflags: [
+        "-DHAVE_DEBAYER_EGL=1",
+    ],
+    generated_headers: [
+        "libcamera_glsl_shaders_h",
     ],
     header_libs: [
         "libcamera_includes",
@@ -71,6 +75,8 @@ cc_library_shared {
     ],
     shared_libs: [
         "libdl",
+        "libEGL",
+        "libGLESv2",
     ],
     static_libs: [
         "libyaml",
@@ -284,4 +290,25 @@ cc_library_headers {
         "libcamera_softisp_ipa_serializer_h",
         "libcamera_softisp_ipa_proxy_h",
     ],
+}
+
+// debayer_egl.cpp includes "../shaders/glsl_shaders.h", found through a software_isp directory beside it
+genrule {
+    name: "libcamera_glsl_shaders_h",
+    tools: ["libcamera_codegen_python"],
+    tool_files: ["utils/codegen/gen-shader-header.py"],
+    srcs: [
+        "src/libcamera/shaders/bayer_1x_packed.frag",
+        "src/libcamera/shaders/bayer_unpacked.frag",
+        "src/libcamera/shaders/bayer_unpacked.vert",
+        "src/libcamera/shaders/identity.vert",
+    ],
+    cmd: "mkdir -p $(genDir)/src/software_isp && touch $(location src/software_isp/.keep) &&" +
+        " $(location libcamera_codegen_python) $(location utils/codegen/gen-shader-header.py)" +
+        " -o $(location src/shaders/glsl_shaders.h) $(in)",
+    out: [
+        "src/shaders/glsl_shaders.h",
+        "src/software_isp/.keep",
+    ],
+    export_include_dirs: ["src/software_isp"],
 }
